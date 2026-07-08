@@ -1,0 +1,16 @@
+# 当前在线人数达到该值时，进入服务器必须拥有未过期的队列白名单。
+# 设置为 0 表示所有玩家都需要队列白名单。
+threshold: 100
+
+# 是否允许 OP 绕过队列白名单检查。
+bypass-op: true
+
+# 是否允许拥有 queuewhitelist.bypass 权限的玩家绕过队列白名单检查。
+bypass-permission: true
+
+# 白名单过期时是否在玩家登录时自动删除数据库记录。
+remove-expired-on-login: true
+
+messages:
+  kick: "服务器当前人数已达到 {threshold} 人，你需要有效的队列白名单才能进入。"
+  kick-expired: "你的队列白名单已经过期，请重新获取后再进入服务器。"

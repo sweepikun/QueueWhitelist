@@ -1,0 +1,22 @@
+name: QueueWhitelist
+version: '${version}'
+main: cn.popcraft.queuewhitelist.QueueWhitelistPlugin
+api-version: '1.17'
+author: PopCraft
+authors: [PopCraft]
+description: 达到指定在线人数后启用限时队列白名单的 Spigot 插件
+
+commands:
+  queuewl:
+    description: QueueWhitelist 管理命令
+    usage: /queuewl <add|remove|check|list|threshold|reload|cleanup>
+    permission: queuewhitelist.admin
+    aliases: [qwl]
+
+permissions:
+  queuewhitelist.admin:
+    description: 允许管理 QueueWhitelist
+    default: op
+  queuewhitelist.bypass:
+    description: 允许绕过队列白名单检查
+    default: op
