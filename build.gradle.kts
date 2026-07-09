@@ -1,6 +1,5 @@
 plugins {
     java
-    id("com.gradleup.shadow") version "9.2.1"
 }
 
 group = "cn.popcraft"
@@ -8,7 +7,9 @@ version = "1.0.0"
 
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.17-R0.1-SNAPSHOT")
-    implementation("org.xerial:sqlite-jdbc:3.46.1.0")
+    compileOnly("com.zaxxer:HikariCP:5.1.0")
+    compileOnly("org.xerial:sqlite-jdbc:3.46.1.0")
+    compileOnly("com.mysql:mysql-connector-j:8.4.0")
 }
 
 tasks.withType<JavaCompile> {
@@ -23,11 +24,6 @@ tasks.processResources {
     }
 }
 
-tasks.shadowJar {
+tasks.jar {
     archiveClassifier.set("")
-    mergeServiceFiles()
-}
-
-tasks.build {
-    dependsOn(tasks.shadowJar)
 }

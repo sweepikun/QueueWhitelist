@@ -11,6 +11,28 @@ bypass-permission: true
 # 白名单过期时是否在玩家登录时自动删除数据库记录。
 remove-expired-on-login: true
 
+database:
+  # 可选：sqlite 或 mysql。
+  type: sqlite
+
+  sqlite:
+    # 相对于 plugins/QueueWhitelist/ 的数据库文件名。
+    file: queuewhitelist.db
+
+  mysql:
+    host: localhost
+    port: 3306
+    database: queuewhitelist
+    username: root
+    password: ""
+    # JDBC 参数，按需调整 SSL、时区和编码。
+    parameters: "useSSL=false&serverTimezone=UTC&characterEncoding=utf8"
+
+  pool:
+    maximum-pool-size: 10
+    minimum-idle: 1
+    connection-timeout: 30000
+
 messages:
   kick: "服务器当前人数已达到 {threshold} 人，你需要有效的队列白名单才能进入。"
   kick-expired: "你的队列白名单已经过期，请重新获取后再进入服务器。"

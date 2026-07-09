@@ -15,7 +15,7 @@ public final class QueueWhitelistPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         queueConfig = QueueConfig.from(this);
-        databaseManager = new DatabaseManager(this);
+        databaseManager = new DatabaseManager(this, queueConfig.databaseConfig());
         databaseManager.open();
         databaseManager.initialize(queueConfig.threshold());
 
@@ -48,5 +48,9 @@ public final class QueueWhitelistPlugin extends JavaPlugin {
 
     public QueueConfig queueConfig() {
         return queueConfig;
+    }
+
+    public DatabaseManager databaseManager() {
+        return databaseManager;
     }
 }

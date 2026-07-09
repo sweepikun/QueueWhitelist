@@ -1,6 +1,7 @@
 package cn.popcraft.queuewhitelist.command;
 
 import cn.popcraft.queuewhitelist.QueueWhitelistPlugin;
+import cn.popcraft.queuewhitelist.config.DatabaseType;
 import cn.popcraft.queuewhitelist.database.DatabaseManager;
 import cn.popcraft.queuewhitelist.database.WhitelistEntry;
 import org.bukkit.Bukkit;
@@ -22,7 +23,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 public final class QueueWhitelistCommand implements CommandExecutor, TabCompleter {
-    private static final List<String> SUB_COMMANDS = Arrays.asList("add", "remove", "check", "list", "threshold", "reload", "cleanup");
+    private static final List<String> SUB_COMMANDS = Arrays.asList("add", "remove", "check", "list", "threshold", "reload", "cleanup", "migrate");
     private static final List<String> DURATIONS = Arrays.asList("30m", "1h", "12h", "1d", "7d", "forever");
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
@@ -50,6 +51,7 @@ public final class QueueWhitelistCommand implements CommandExecutor, TabComplete
                 case "threshold" -> threshold(sender, args);
                 case "reload" -> reload(sender);
                 case "cleanup" -> cleanup(sender);
+                case "migrate" -> migrate(sender, args);
                 default -> sendHelp(sender, label);
             }
         } catch (IllegalArgumentException exception) {
@@ -79,6 +81,9 @@ public final class QueueWhitelistCommand implements CommandExecutor, TabComplete
         }
         if (sub.equals("threshold") && args.length == 2) {
             return filter(Arrays.asList("0", "50", "100", "150", "200"), args[1]);
+        }
+        if (sub.equals("migrate") && args.length == 2) {
+            return filter(Arrays.asList("sqlite", "mysql"), args[1]);
         }
         return Collections.emptyList();
     }
@@ -154,6 +159,16 @@ public final class QueueWhitelistCommand implements CommandExecutor, TabComplete
         sender.sendMessage(ChatColor.GREEN + "已清理 " + removed + " 条过期队列白名单。");
     }
 
+    private void migrate(CommandSender sender, String[] args) {
+        if (args.length != 2) {
+            throw new IllegalArgumentException("用法：/queuewl migrate <sqlite|mysql>");
+        }
+        DatabaseType targetType = DatabaseType.from(args[1]);
+        int count = databaseManager.migrateTo(targetType, plugin.queueConfig().threshold());
+        sender.sendMessage(ChatColor.GREEN + "数据库转换完成：" + databaseManager.type().configName() + " -> " + targetType.configName() + "，已同步 " + count + " 条白名单记录。");
+        sender.sendMessage(ChatColor.YELLOW + "如需切换到目标数据库，请修改 config.yml 的 database.type 后执行 /queuewl reload 或重启服务器。");
+    }
+
     private void sendHelp(CommandSender sender, String label) {
         sender.sendMessage(ChatColor.GOLD + "QueueWhitelist 命令：");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " add <玩家> <时长>" + ChatColor.GRAY + " - 添加限时白名单");
@@ -163,6 +178,7 @@ public final class QueueWhitelistCommand implements CommandExecutor, TabComplete
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " threshold [人数]" + ChatColor.GRAY + " - 查看或设置触发人数");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " reload" + ChatColor.GRAY + " - 重载配置");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " cleanup" + ChatColor.GRAY + " - 清理过期记录");
+        sender.sendMessage(ChatColor.YELLOW + "/" + label + " migrate <sqlite|mysql>" + ChatColor.GRAY + " - 将当前数据库转换到目标数据库");
     }
 
     private String formatExpires(Long expiresAt) {
