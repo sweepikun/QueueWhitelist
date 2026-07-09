@@ -23,7 +23,7 @@ import java.util.Optional;
 
 public final class DatabaseManager {
     private final JavaPlugin plugin;
-    private final DatabaseConfig config;
+    private DatabaseConfig config;
     private HikariDataSource dataSource;
 
     public DatabaseManager(JavaPlugin plugin, DatabaseConfig config) {
@@ -32,6 +32,32 @@ public final class DatabaseManager {
     }
 
     public void open() {
+        dataSource = createDataSource(config);
+    }
+
+    public void reconfigure(DatabaseConfig newConfig, int configThreshold) {
+        HikariDataSource previousDataSource = dataSource;
+        DatabaseConfig previousConfig = config;
+        dataSource = null;
+        config = newConfig;
+
+        try {
+            open();
+            initialize(configThreshold);
+            if (previousDataSource != null) {
+                previousDataSource.close();
+            }
+        } catch (RuntimeException exception) {
+            if (dataSource != null) {
+                dataSource.close();
+            }
+            dataSource = previousDataSource;
+            config = previousConfig;
+            throw exception;
+        }
+    }
+
+    private HikariDataSource createDataSource(DatabaseConfig databaseConfig) {
         try {
             File dataFolder = plugin.getDataFolder();
             if (!dataFolder.exists() && !dataFolder.mkdirs()) {
@@ -39,28 +65,28 @@ public final class DatabaseManager {
             }
 
             HikariConfig hikariConfig = new HikariConfig();
-            hikariConfig.setPoolName("QueueWhitelist-" + config.type().configName());
-            hikariConfig.setJdbcUrl(config.jdbcUrl(plugin));
-            hikariConfig.setConnectionTimeout(config.connectionTimeout());
-            hikariConfig.setMinimumIdle(config.minimumIdle());
-            hikariConfig.setMaximumPoolSize(config.type() == DatabaseType.SQLITE ? 1 : config.maximumPoolSize());
+            hikariConfig.setPoolName("QueueWhitelist-" + databaseConfig.type().configName());
+            hikariConfig.setJdbcUrl(databaseConfig.jdbcUrl(plugin));
+            hikariConfig.setConnectionTimeout(databaseConfig.connectionTimeout());
+            hikariConfig.setMaximumPoolSize(databaseConfig.type() == DatabaseType.SQLITE ? 1 : databaseConfig.maximumPoolSize());
+            hikariConfig.setMinimumIdle(databaseConfig.type() == DatabaseType.SQLITE ? 1 : Math.min(databaseConfig.minimumIdle(), databaseConfig.maximumPoolSize()));
 
-            if (config.type() == DatabaseType.SQLITE) {
+            if (databaseConfig.type() == DatabaseType.SQLITE) {
                 hikariConfig.setDriverClassName("org.sqlite.JDBC");
             } else {
                 hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
-                hikariConfig.setUsername(config.mysqlUsername());
-                hikariConfig.setPassword(config.mysqlPassword());
+                hikariConfig.setUsername(databaseConfig.mysqlUsername());
+                hikariConfig.setPassword(databaseConfig.mysqlPassword());
             }
 
-            dataSource = new HikariDataSource(hikariConfig);
+            return new HikariDataSource(hikariConfig);
         } catch (SQLException exception) {
             throw new IllegalStateException("数据库连接池创建失败", exception);
         }
     }
 
     public void initialize(int configThreshold) {
-        execute("CREATE TABLE IF NOT EXISTS settings (setting_key VARCHAR(64) PRIMARY KEY, value TEXT NOT NULL)");
+        ensureSettingsSchema();
         execute("CREATE TABLE IF NOT EXISTS whitelist (player_name VARCHAR(16) PRIMARY KEY, expires_at BIGINT NULL, created_at BIGINT NOT NULL)");
 
         if (getSetting("threshold").isEmpty()) {
@@ -202,6 +228,54 @@ public final class DatabaseManager {
             throw new IllegalStateException("读取所有白名单失败", exception);
         }
         return entries;
+    }
+
+    private void ensureSettingsSchema() {
+        if (!tableExists("settings")) {
+            execute("CREATE TABLE settings (setting_key VARCHAR(64) PRIMARY KEY, value TEXT NOT NULL)");
+            return;
+        }
+
+        if (hasColumn("settings", "setting_key")) {
+            return;
+        }
+
+        if (!hasColumn("settings", "key")) {
+            throw new IllegalStateException("settings 表缺少 setting_key 字段，无法初始化数据库。");
+        }
+
+        execute("CREATE TABLE settings_new (setting_key VARCHAR(64) PRIMARY KEY, value TEXT NOT NULL)");
+        execute("INSERT INTO settings_new(setting_key, value) SELECT " + quoteIdentifier("key") + ", value FROM settings");
+        execute("DROP TABLE settings");
+        execute("ALTER TABLE settings_new RENAME TO settings");
+        plugin.getLogger().info("已将旧版 settings(key, value) 表结构升级为 settings(setting_key, value)。");
+    }
+
+    private boolean tableExists(String table) {
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.executeQuery("SELECT 1 FROM " + quoteIdentifier(table) + " WHERE 1 = 0");
+            return true;
+        } catch (SQLException ignored) {
+            return false;
+        }
+    }
+
+    private boolean hasColumn(String table, String column) {
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.executeQuery("SELECT " + quoteIdentifier(column) + " FROM " + quoteIdentifier(table) + " WHERE 1 = 0");
+            return true;
+        } catch (SQLException ignored) {
+            return false;
+        }
+    }
+
+    private String quoteIdentifier(String identifier) {
+        if (config.type() == DatabaseType.MYSQL) {
+            return "`" + identifier + "`";
+        }
+        return "\"" + identifier + "\"";
     }
 
     private Optional<String> getSetting(String key) {

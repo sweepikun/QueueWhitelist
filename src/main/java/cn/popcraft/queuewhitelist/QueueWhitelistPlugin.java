@@ -43,7 +43,8 @@ public final class QueueWhitelistPlugin extends JavaPlugin {
     public void reloadQueueConfig() {
         reloadConfig();
         queueConfig = QueueConfig.from(this);
-        getLogger().info("配置已重新加载。");
+        databaseManager.reconfigure(queueConfig.databaseConfig(), queueConfig.threshold());
+        getLogger().info("配置和数据库连接已重新加载，当前数据库类型：" + databaseManager.type().configName() + "。");
     }
 
     public QueueConfig queueConfig() {
