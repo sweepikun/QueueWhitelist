@@ -22,13 +22,13 @@ public final class PlayerLoginListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerLogin(PlayerLoginEvent event) {
-        int threshold = databaseManager.getThreshold();
+        QueueConfig config = plugin.queueConfig();
+        int threshold = config.threshold();
         int onlinePlayers = plugin.getServer().getOnlinePlayers().size();
         if (onlinePlayers < threshold) {
             return;
         }
 
-        QueueConfig config = plugin.queueConfig();
         String playerName = event.getPlayer().getName();
         if (mayBypass(event, config)) {
             return;

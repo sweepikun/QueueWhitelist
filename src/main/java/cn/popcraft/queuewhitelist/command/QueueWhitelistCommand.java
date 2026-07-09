@@ -140,11 +140,11 @@ public final class QueueWhitelistCommand implements CommandExecutor, TabComplete
 
     private void threshold(CommandSender sender, String[] args) {
         if (args.length != 2) {
-            sender.sendMessage(ChatColor.AQUA + "当前触发人数阈值：" + databaseManager.getThreshold());
+            sender.sendMessage(ChatColor.AQUA + "当前触发人数阈值：" + plugin.queueConfig().threshold());
             return;
         }
         int threshold = parseNonNegativeInt(args[1], "人数阈值必须是非负整数");
-        databaseManager.setThreshold(threshold);
+        plugin.setThreshold(threshold);
         sender.sendMessage(ChatColor.GREEN + "已设置触发人数阈值为：" + threshold);
         plugin.getLogger().info("管理员 " + sender.getName() + " 将触发人数阈值设置为 " + threshold + "。");
     }

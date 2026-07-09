@@ -29,7 +29,7 @@ public final class QueueWhitelistPlugin extends JavaPlugin {
             pluginCommand.setTabCompleter(command);
         }
 
-        getLogger().info("队列白名单插件已启用，当前触发人数阈值：" + databaseManager.getThreshold());
+        getLogger().info("队列白名单插件已启用，当前触发人数阈值：" + queueConfig.threshold());
     }
 
     @Override
@@ -45,6 +45,12 @@ public final class QueueWhitelistPlugin extends JavaPlugin {
         queueConfig = QueueConfig.from(this);
         databaseManager.reconfigure(queueConfig.databaseConfig(), queueConfig.threshold());
         getLogger().info("配置和数据库连接已重新加载，当前数据库类型：" + databaseManager.type().configName() + "。");
+    }
+
+    public void setThreshold(int threshold) {
+        getConfig().set("threshold", Math.max(0, threshold));
+        saveConfig();
+        queueConfig = QueueConfig.from(this);
     }
 
     public QueueConfig queueConfig() {
